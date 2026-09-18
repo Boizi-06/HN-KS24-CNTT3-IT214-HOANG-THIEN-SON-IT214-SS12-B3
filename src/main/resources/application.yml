@@ -1,0 +1,43 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: payment-service
+
+# =========================================================================
+# CẤU HÌNH RESILIENCE4J CIRCUIT BREAKER: bankClient
+# =========================================================================
+resilience4j:
+  circuitbreaker:
+    instances:
+      bankClient:
+        # 1. Kiểu Sliding Window: Dựa trên số lượng request (COUNT_BASED)
+        slidingWindowType: COUNT_BASED
+
+        # 2. Sliding Window Size = 20 (theo dõi 20 request gần nhất)
+        slidingWindowSize: 20
+
+        # 3. GIẢI QUYẾT BẪY "MINIMUM CALLS":
+        # Số lượng request tối thiểu cần thu thập trước khi tính toán tỷ lệ lỗi.
+        # - Đảm bảo nguyên tắc: minimumNumberOfCalls (5) >= permittedNumberOfCallsInHalfOpenState (3)
+        # - Đảm bảo độ nhạy: Khi 5 khách hàng ban đêm gặp lỗi (5 >= 5), tỷ lệ lỗi là 100% > 50%,
+        #   Cầu dao sẽ LẬP TỨC MỞ MẠCH (OPEN) để bảo vệ ngân hàng đối tác.
+        minimumNumberOfCalls: 5
+
+        # 4. Ngưỡng tỷ lệ lỗi kích hoạt Mở mạch: 50%
+        failureRateThreshold: 50
+
+        # 5. Thời gian ngắt kết nối ở trạng thái OPEN: 30 giây
+        waitDurationInOpenState: 30s
+
+        # 6. Ở trạng thái HALF_OPEN: Chỉ cho phép thả đúng 3 request trinh sát
+        permittedNumberOfCallsInHalfOpenState: 3
+
+        # 7. Tự động chuyển từ OPEN sang HALF_OPEN sau khi hết 30 giây
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+logging:
+  level:
+    com.storex.payment: INFO
+    io.github.resilience4j: DEBUG
